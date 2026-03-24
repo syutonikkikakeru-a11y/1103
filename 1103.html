@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>1103 Online Duel</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
+        #game { display: flex; flex-direction: column; height: 100vh; }
+        .field-half { flex: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .opponent { background: #1a0505; border-bottom: 2px solid #333; transform: rotate(0deg); }
+        .player { background: #05051a; }
+        .row { display: flex; gap: 4px; margin: 3px 0; }
+        .slot { width: 48px; height: 68px; border: 1px solid #333; border-radius: 3px; background: rgba(255,255,255,0.03); position: relative; }
+        .card { width: 48px; height: 68px; border-radius: 3px; font-size: 7px; border: 1px solid #000; position: absolute; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; box-sizing: border-box; }
+        .monster { background: #d2b48c; color: #000; }
+        .spell { background: #1d8c6e; color: #fff; }
+        .trap { background: #ba266d; color: #fff; }
+        .back-side { background: #500 !important; color: #500 !important; border: 2px solid #300; }
+        #hand { height: 90px; background: #111; display: flex; justify-content: center; align-items: center; gap: 4px; border-top: 2px solid #444; }
+        .lp { position: absolute; left: 10px; font-size: 22px; font-family: monospace; font-weight: bold; z-index: 100; cursor: pointer; }
+        .opp-lp { top: 10px; color: #f55; }
+        .my-lp { bottom: 100px; color: #5f5; }
+        #menu { display: none; position: fixed; background: #222; border: 1px solid #fff; z-index: 2000; padding: 5px; border-radius: 5px; box-shadow: 0 0 10px #000; }
+        #menu button { display: block; width: 110px; padding: 10px; margin: 4px; background: #444; color: #fff; border: none; font-size: 13px; border-radius: 3px; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <div id="status">Peer準備中...</div>
+    <div id="url-box" style="font-size: 10px; margin: 15px; color: #0af; word-break: break-all;"></div>
+    <button onclick="startSolo()" style="padding: 10px;">一人回しテスト</button>
+</div>
+
+<div id="game">
+    <div class="field-half opponent">
+        <div class="lp opp-lp" id="opp-lp">8000</div>
+        <div class="row" id="opp-st">
+            <div class="slot" id="opp-sz4"></div><div class="slot" id="opp-sz3"></div><div class="slot" id="opp-sz2"></div><div class="slot" id="opp-sz1"></div><div class="slot" id="opp-sz0"></div>
+        </div>
+        <div class="row" id="opp-m">
+            <div class="slot" id="opp-mz4"></div><div class="slot" id="opp-mz3"></div><div class="slot" id="opp-mz2"></div><div class="slot" id="opp-mz1"></div><div class="slot" id="opp-mz0"></div>
+        </div>
+    </div>
+    <div class="field-half player">
+        <div class="lp my-lp" id="my-lp" onclick="adjustLP()">8000</div>
+        <div class="row" id="my-m">
+            <div class="slot" id="mz0"></div><div class="slot" id="mz1"></div><div class="slot" id="mz2"></div><div class="slot" id="mz3"></div><div class="slot" id="mz4"></div>
+        </div>
+        <div class="row" id="my-st">
+            <div class="slot" id="sz0"></div><div class="slot" id="sz1"></div><div class="slot" id="sz2"></div><div class="slot" id="sz3"></div><div class="slot" id="sz4"></div>
+        </div>
+    </div>
+    <div id="hand"></div>
+</div>
+<div id="menu"></div>
+
+<script>
+    const DB = {
+        "h1": { name: "エアーマン", type: "monster" },
+        "h2": { name: "ネオス", type: "monster" },
+        "s1": { name: "超融合", type: "spell" },
+        "t1": { name: "神の警告", type: "trap" }
+    };
+    let deck = ["h1", "h2", "s1", "t1", "h1", "h2", "s1", "t1", "h1"];
+    let peer = new Peer(), conn, selected = null, myLP = 8000, oppLP = 8000;
+
+    peer.on('open', id => {
+        const url = window.location.href.split('?')[0] + '?id=' + id;
+        document.getElementById('status').innerText = "URLを相手に送信してください";
+        document.getElementById('url-box').innerText = url;
+        const tid = new URLSearchParams(window.location.search).get('id');
+        if(tid) { conn = peer.connect(tid); setupConn(); }
+    });
+
+    peer.on('connection', c => { conn = c; setupConn(); setTimeout(startDuel, 1000); });
+
+    function setupConn() {
+        conn.on('open', () => {
+            document.getElementById('overlay').style.display = 'none';
+            conn.on('data', data => handleSync(data));
+        });
+    }
+
+    function startDuel() { for(let i=0; i<6; i++) draw(); conn.send({type:'START'}); }
+    function startSolo() { document.getElementById('overlay').style.display = 'none'; for(let i=0; i<6; i++) draw(); }
+
+    function draw() {
+        if(!deck.length) return;
+        const id = deck.shift();
+        const card = createCard(id, DB[id], true);
+        document.getElementById('hand').appendChild(card);
+    }
+
+    function createCard(id, data, isMine) {
+        const el = document.createElement('div');
+        el.className = `card ${data.type}`;
+        el.id = 'c-' + Math.random().toString(36).substr(2, 9);
+        el.innerText = data.name;
+        if(isMine) el.onclick = (e) => openMenu(e, el, data);
+        return el;
+    }
+
+    function openMenu(e, el, data) {
+        selected = { el, data, id: el.id };
+        const m = document.getElementById('menu');
+        m.style.display = 'block'; m.style.left = e.clientX + 'px'; m.style.top = e.clientY + 'px';
+        let h = '';
+        if(el.parentNode.id === 'hand') {
+            h += `<button onclick="play(false)">${data.type==='monster'?'召喚':'発動'}</button>`;
+            h += `<button onclick="play(true)">セット</button>`;
+        } else {
+            if(el.classList.contains('back-side')) h += `<button onclick="flip()">発動/反転</button>`;
+            h += `<button onclick="toGY()">墓地へ</button>`;
+        }
+        m.innerHTML = h + `<button onclick="closeMenu()">閉じる</button>`;
+    }
+
+    function play(isSet) {
+        const { el, data, id } = selected;
+        const zonePrefix = data.type === 'monster' ? 'mz' : 'sz';
+        for(let i=0; i<5; i++) {
+            const slot = document.getElementById(zonePrefix + i);
+            if(!slot.hasChildNodes()) {
+                if(isSet) el.classList.add('back-side');
+                slot.appendChild(el);
+                if(conn) conn.send({ type:'PLAY', id, cardId:el.getAttribute('data-dbid')||'h1', zone:zonePrefix+i, isSet });
+                break;
+            }
+        }
+        closeMenu();
+    }
+
+    function flip() {
+        selected.el.classList.remove('back-side');
+        if(conn) conn.send({ type:'FLIP', id: selected.el.id });
+        closeMenu();
+    }
+
+    function toGY() {
+        selected.el.remove();
+        if(conn) conn.send({ type:'GY', id: selected.el.id });
+        closeMenu();
+    }
+
+    function adjustLP() {
+        const v = prompt("LP増減:", "-2000");
+        if(v) { 
+            myLP += parseInt(v); document.getElementById('my-lp').innerText = myLP;
+            if(conn) conn.send({ type:'LP', val: myLP });
+        }
+    }
+
+    function handleSync(d) {
+        if(d.type === 'START') for(let i=0; i<6; i++) draw();
+        if(d.type === 'LP') document.getElementById('opp-lp').innerText = d.val;
+        if(d.type === 'PLAY') {
+            const oppSlot = document.getElementById('opp-' + d.zone);
+            const c = createCard('temp', DB['h1'], false); // 簡易化
+            c.id = d.id;
+            if(d.isSet) { c.classList.add('back-side'); c.innerText = ""; }
+            oppSlot.appendChild(c);
+        }
+        if(d.type === 'FLIP') {
+            const c = document.getElementById(d.id);
+            if(c) { c.classList.remove('back-side'); c.innerText = "公開"; }
+        }
+        if(d.type === 'GY') { const c = document.getElementById(d.id); if(c) c.remove(); }
+    }
+
+    function closeMenu() { document.getElementById('menu').style.display = 'none'; }
+</script>
+</body>
+</html>
