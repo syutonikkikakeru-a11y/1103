@@ -3,195 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>1103 Master Duel: HERO vs Laggia</title>
+    <title>1103 Professional: HERO vs Laggia</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #050505; color: #eee; font-family: 'Hiragino Kaku Gothic ProN', sans-serif; overflow: hidden; touch-action: none; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
         #game { display: flex; flex-direction: column; height: 100vh; }
-        .field-half { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 2px solid #333; position: relative; }
-        .row { display: flex; gap: 10px; margin: 5px 0; }
-        .slot { width: 65px; height: 95px; border: 1px solid #333; background: rgba(255,255,255,0.02); position: relative; display: flex; align-items: center; justify-content: center; }
-        /* カードの基本 */
-        .card { width: 65px; height: 95px; border-radius: 3px; font-size: 9px; position: absolute; transition: transform 0.2s; border: 1px solid #000; box-sizing: border-box; background-size: cover; cursor: pointer; }
-        .monster { background: linear-gradient(135deg, #d2b48c 0%, #a67c52 100%); color: #000; }
-        .spell { background: linear-gradient(135deg, #1d8c6e 0%, #135d49 100%); color: #fff; }
-        .trap { background: linear-gradient(135deg, #ba266d 0%, #7a1947 100%); color: #fff; }
-        /* 守備表示（横） */
-        .def-pos { transform: rotate(90deg); width: 95px !important; height: 65px !important; }
-        .back-side { background: #411 !important; color: transparent !important; border: 2px solid #622; }
-        
-        #hand { height: 120px; background: #111; display: flex; justify-content: center; align-items: center; gap: 5px; border-top: 2px solid #555; }
-        .lp-display { position: absolute; left: 10px; font-size: 32px; font-weight: bold; font-family: 'Arial Black'; color: #0f0; text-shadow: 0 0 10px #000; z-index: 100; }
-        .opp-lp { top: 20px; color: #f00; }
-        #log { position: fixed; right: 0; top: 0; width: 200px; height: 100%; background: rgba(0,0,0,0.8); font-size: 11px; padding: 10px; border-left: 1px solid #444; overflow-y: auto; pointer-events: none; }
-        #chain-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #300; border: 3px solid #f00; padding: 20px; z-index: 5000; text-align: center; }
-        #menu { display: none; position: fixed; background: #222; border: 1px solid #fff; z-index: 2000; padding: 5px; }
-        #menu button { display: block; width: 140px; padding: 10px; margin: 3px; background: #444; color: #fff; border: none; text-align: left; }
+        .field-half { flex: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 2px solid #444; }
+        .row { display: flex; gap: 10px; min-height: 100px; }
+        .slot { width: 65px; height: 95px; border: 1px solid #333; background: rgba(255,255,255,0.02); display: flex; align-items: center; justify-content: center; }
+        .card { width: 65px; height: 95px; border-radius: 4px; font-size: 9px; border: 1px solid #000; position: absolute; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; padding: 4px; z-index: 10; background: #fff; color: #000; }
+        .monster { background: #d2b48c; } .spell { background: #1d8c6e; color: #fff; } .trap { background: #ba266d; color: #fff; }
+        .def-pos { transform: rotate(90deg); } .back-side { background: #411 !important; color: #411 !important; border: 2px solid #622; }
+        #hand { height: 120px; background: #111; display: flex; justify-content: center; align-items: center; gap: 8px; border-top: 3px solid #555; }
+        .lp { position: absolute; left: 15px; font-size: 32px; font-weight: bold; font-family: monospace; z-index: 100; text-shadow: 0 0 10px #000; }
+        #phase-display { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 10px 20px; border: 2px solid #d4af37; color: #d4af37; font-size: 1.5rem; pointer-events: none; z-index: 2000; }
+        #chain-panel { display: none; position: fixed; top: 35%; left: 50%; transform: translateX(-50%); background: #200; border: 3px solid #f00; padding: 20px; z-index: 9000; text-align: center; }
+        #menu { display: none; position: fixed; background: #222; border: 1px solid #fff; z-index: 3000; padding: 5px; }
+        #menu button { display: block; width: 160px; padding: 12px; margin: 3px; background: #444; color: #fff; border: none; text-align: left; font-size: 14px; }
         #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #controls { position: fixed; right: 10px; bottom: 130px; display: flex; flex-direction: column; gap: 5px; }
+        button.p-btn { background: #333; color: #fff; border: 1px solid #666; padding: 10px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h1 style="color:#d4af37">1103 PRO DUEL</h1>
-    <div id="status">サーバー接続中...</div>
-    <div id="url-box" style="margin:20px; padding:15px; border:2px dashed #444; color:#0af; font-family:monospace;"></div>
-    <div style="background:#222; padding:20px; border-radius:10px;">
-        <p>使用デッキを選択してください：</p>
-        <button onclick="setupDeck('HERO')" style="background:#135d49; color:#fff; padding:10px 20px;">HEROビート</button>
-        <button onclick="setupDeck('Laggia')" style="background:#7a1947; color:#fff; padding:10px 20px;">ラビットラギア</button>
+    <h1 style="color:#d4af37">1103 PRO MASTER DUEL</h1>
+    <div id="status">Connecting...</div>
+    <div id="url-box" style="margin:20px; color:#0cf; font-size:11px; word-break:all;"></div>
+    <div style="background:#111; padding:20px; border:1px solid #444;">
+        <p>指定レシピで対戦開始:</p>
+        <button onclick="pickDeck('HERO')" style="background:#135d49; color:#fff; padding:10px;">HEROビート(エアー/アナザー等)</button>
+        <button onclick="pickDeck('Laggia')" style="background:#7a1947; color:#fff; padding:10px;">ラビットラギア(ラビット/セイバー等)</button>
     </div>
 </div>
 
-<div id="chain-panel">
-    <h3 id="chain-msg" style="color:#fff"></h3>
-    <button onclick="respond(true)" style="padding:10px 20px; background:red; color:white;">発動する</button>
-    <button onclick="respond(false)" style="padding:10px 20px;">通します</button>
-</div>
+<div id="phase-display">WAITING...</div>
+<div id="controls"><button class="p-btn" onclick="nextPhase()">フェイズ移行</button></div>
 
-<div id="log"></div>
+<div id="chain-panel">
+    <div id="chain-msg" style="color:#fff; margin-bottom:10px;"></div>
+    <button onclick="resolveChain(true)" style="background:red; color:white;">発動する</button>
+    <button onclick="resolveChain(false)">なし</button>
+</div>
 
 <div id="game">
     <div class="field-half opponent">
-        <div class="lp-display opp-lp" id="opp-lp">8000</div>
+        <div class="lp" style="top:20px; color:#f55;" id="opp-lp">8000</div>
         <div class="row"><div class="slot" id="opp-sz4"></div><div class="slot" id="opp-sz3"></div><div class="slot" id="opp-sz2"></div><div class="slot" id="opp-sz1"></div><div class="slot" id="opp-sz0"></div></div>
         <div class="row"><div class="slot" id="opp-mz4"></div><div class="slot" id="opp-mz3"></div><div class="slot" id="opp-mz2"></div><div class="slot" id="opp-mz1"></div><div class="slot" id="opp-mz0"></div></div>
     </div>
     <div class="field-half player">
-        <div class="lp-display" id="my-lp" onclick="changeLP()">8000</div>
+        <div class="lp" style="bottom:135px; color:#5f5;" id="my-lp" onclick="adjustLP()">8000</div>
         <div class="row"><div class="slot" id="mz0"></div><div class="slot" id="mz1"></div><div class="slot" id="mz2"></div><div class="slot" id="mz3"></div><div class="slot" id="mz4"></div></div>
         <div class="row"><div class="slot" id="sz0"></div><div class="slot" id="sz1"></div><div class="slot" id="sz2"></div><div class="slot" id="sz3"></div><div class="slot" id="sz4"></div></div>
     </div>
     <div id="hand"></div>
 </div>
-
 <div id="menu"></div>
 
 <script>
-const MASTER_DB = {
-    // HERO
-    "air": { name: "E・HERO エアーマン", type: "monster", atk: 1800, def: 300, attr: "風", level: 4 },
-    "ana": { name: "E・HERO アナザー・ネオス", type: "monster", atk: 1900, def: 1300, attr: "光", level: 4 },
-    "mir": { name: "ミラクル・フュージョン", type: "spell" },
-    "dua": { name: "デュアルスパーク", type: "spell" },
-    // Laggia
-    "rab": { name: "レスキュー・ラビット", type: "monster", atk: 300, def: 100, attr: "地", level: 4 },
-    "sab": { name: "セイバーザウルス", type: "monster", atk: 1900, def: 500, attr: "地", level: 4 },
-    "gua": { name: "ジュラック・グアイバ", type: "monster", atk: 1700, def: 1000, attr: "炎", level: 4 },
-    // 汎用
-    "war": { name: "神の警告", type: "trap" },
-    "nai": { name: "奈落の落とし穴", type: "trap" },
-    "cyc": { name: "サイクロン", type: "spell" }
+// 指定されたレシピのみで構成
+const DB = {
+    air: { n: "E･HERO エアーマン", t: "monster", atk: 1800, def: 300 },
+    ana: { n: "E･HERO アナザー･ネオス", t: "monster", atk: 1900, def: 1300 },
+    rab: { n: "レスキュー･ラビット", t: "monster", atk: 300, def: 100 },
+    sab: { n: "セイバーザウルス", t: "monster", atk: 1900, def: 500 },
+    war: { n: "神の警告", t: "trap" },
+    dua: { n: "デュアルスパーク", t: "spell" },
+    mir: { n: "ミラクル･フュージョン", t: "spell" },
+    cyc: { n: "サイクロン", t: "spell" }
 };
 
-const DECK_LISTS = {
-    HERO: ["air","air","ana","ana","ana","mir","mir","dua","dua","dua","war","war","nai","nai","cyc","cyc","air","ana","ana","mir","dua","war","nai","cyc","air","ana","ana","mir","dua","war","nai","cyc","air","ana","ana","mir","dua","war","nai","cyc"],
-    Laggia: ["rab","rab","rab","sab","sab","sab","gua","gua","gua","war","war","nai","nai","cyc","cyc","rab","sab","sab","gua","gua","war","nai","cyc","rab","sab","sab","gua","gua","war","nai","cyc","rab","sab","sab","gua","gua","war","nai","cyc"]
+const RECIPES = {
+    HERO: ["air","air","air","ana","ana","ana","dua","dua","dua","mir","mir","mir","war","war","war","cyc","cyc","cyc","air","ana","dua","mir","war","cyc","air","ana","dua","mir","war","cyc","air","ana","dua","mir","war","cyc","air","ana","dua","cyc"],
+    Laggia: ["rab","rab","rab","sab","sab","sab","war","war","war","cyc","cyc","cyc","rab","sab","war","cyc","rab","sab","war","cyc","rab","sab","war","cyc","rab","sab","war","cyc","rab","sab","war","cyc","rab","sab","war","cyc","rab","sab","war","cyc"]
 };
 
-let deck = [], peer = new Peer(), conn, selectedEl = null;
+let deck=[], peer=new Peer(), conn, myLP=8000, isMyTurn=false, currentPhase="DP", turnCount=0;
 
-function setupDeck(key) {
-    deck = DECK_LISTS[key].map(id => ({...MASTER_DB[id], dbid: id}));
-    deck = deck.sort(() => Math.random() - 0.5);
-    document.getElementById('status').innerText = `${key}デッキ準備完了。相手を待機中...`;
+function pickDeck(key){
+    deck = RECIPES[key].sort(() => Math.random() - 0.5);
+    document.getElementById('status').innerText = "Ready. Waiting for opponent...";
 }
 
 peer.on('open', id => {
-    const url = window.location.origin + window.location.pathname + '?id=' + id;
-    document.getElementById('url-box').innerText = url;
+    document.getElementById('url-box').innerText = window.location.origin + window.location.pathname + "?id=" + id;
     const tid = new URLSearchParams(window.location.search).get('id');
     if(tid) { conn = peer.connect(tid); initConn(); }
 });
 
-peer.on('connection', c => { conn = c; initConn(); setTimeout(start, 1000); });
+peer.on('connection', c => { conn = c; initConn(); setTimeout(decideOrder, 1000); });
+
+function decideOrder() {
+    const first = Math.random() > 0.5;
+    conn.send({type:'ORDER', first: !first});
+    startDuel(first);
+}
 
 function initConn() {
     conn.on('open', () => {
         document.getElementById('overlay').style.display = 'none';
-        conn.on('data', data => handleSync(data));
+        conn.on('data', d => handleSync(d));
     });
 }
 
-function start() { for(let i=0; i<5; i++) draw(); addLog("デュエル開始！"); }
-function draw() {
-    if(!deck.length) return;
-    const cData = deck.shift();
-    const el = document.createElement('div');
-    el.className = `card ${cData.type}`;
-    el.id = 'card-' + Math.random().toString(36).substr(2, 9);
-    el.innerHTML = `<div style="padding:2px">${cData.name}</div><div style="position:absolute;bottom:2px;right:2px;font-size:7px">${cData.atk||''}/${cData.def||''}</div>`;
-    el.dataset.dbid = cData.dbid;
-    el.onclick = (e) => openMenu(e, el, cData);
-    document.getElementById('hand').appendChild(el);
+function startDuel(first) {
+    isMyTurn = first; turnCount = 1;
+    for(let i=0; i<5; i++) draw();
+    updateUI();
 }
 
-function openMenu(e, el, data) {
-    const m = document.getElementById('menu');
-    m.style.display = 'block'; m.style.left = e.clientX + 'px'; m.style.top = e.clientY + 'px';
-    selectedEl = el;
-    const isHand = el.parentNode.id === 'hand';
-    let h = "";
-    if(isHand) {
-        if(data.type === 'monster') {
-            h += `<button onclick="action('SUMMON')">召喚</button>`;
-            h += `<button onclick="action('SET_MON')">守備セット</button>`;
-        } else {
-            h += `<button onclick="action('ACTIVATE')">発動</button>`;
-            h += `<button onclick="action('SET_ST')">セット</button>`;
-        }
-    } else {
-        h += `<button onclick="action('CHANGE_POS')">表示形式変更</button>`;
-        h += `<button onclick="action('TO_GY')">墓地へ送り</button>`;
-    }
-    m.innerHTML = h + `<button onclick="hideMenu()">閉じる</button>`;
+function draw() { if(deck.length) { const id=deck.shift(); document.getElementById('hand').appendChild(createCard(id, true)); } }
+
+function createCard(id, isMine) {
+    const d=DB[id], el=document.createElement('div');
+    el.className=`card ${d.t}`; el.id='c-'+Math.random().toString(36).substr(2,9);
+    el.dataset.dbid=id; el.innerHTML=`<b>${d.n}</b>`+(d.t==='monster'?`<br>${d.atk}/${d.def}`:'');
+    if(isMine) el.onclick=(e)=>openMenu(e, el);
+    return el;
 }
 
-function action(type) {
-    const data = MASTER_DB[selectedEl.dataset.dbid];
-    addLog(`[宣言] ${data.name} の ${type}`);
-    conn.send({ type: 'PRIORITY_CHECK', actionType: type, cardName: data.name, id: selectedEl.id, dbid: selectedEl.dataset.dbid });
-    hideMenu();
+function openMenu(e, el) {
+    if(!isMyTurn && DB[el.dataset.dbid].t === 'monster') return;
+    const m=document.getElementById('menu'), d=DB[el.dataset.dbid];
+    m.style.display='block'; m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px';
+    window.selectedEl=el;
+    let h = (el.parentNode.id==='hand') ? 
+        (d.t==='monster' ? `<button onclick="play('SUMMON')">召喚</button><button onclick="play('SET_MON')">セット(横)</button>` : `<button onclick="play('ACTIVATE')">発動</button><button onclick="play('SET_ST')">セット</button>`) :
+        `<button onclick="play('EFFECT')">効果発動</button><button onclick="play('GY')">墓地へ</button>`;
+    m.innerHTML = h + `<button onclick="document.getElementById('menu').style.display='none'">閉じる</button>`;
+}
+
+function play(act) {
+    document.getElementById('menu').style.display='none';
+    const d = DB[window.selectedEl.dataset.dbid];
+    conn.send({type:'CHECK', act, name:d.n, dbid:window.selectedEl.dataset.dbid, cid:window.selectedEl.id});
 }
 
 function handleSync(d) {
-    if(d.type === 'PRIORITY_CHECK') {
-        document.getElementById('chain-msg').innerText = `相手の ${d.cardName} (${d.actionType}) に対し、何かありますか？`;
-        document.getElementById('chain-panel').style.display = 'block';
-        window.pending = d;
+    if(d.type==='ORDER') startDuel(d.first);
+    if(d.type==='PHASE') { isMyTurn=true; currentPhase="DP"; turnCount++; if(turnCount>1) draw(); updateUI(); }
+    if(d.type==='CHECK') { 
+        document.getElementById('chain-panel').style.display='block'; 
+        document.getElementById('chain-msg').innerText=`相手の ${d.name} (${d.act}) にチェーンしますか？`; 
+        window.pending = d; 
     }
-    if(d.type === 'RESPONSE') {
-        if(d.ok) executeAction(window.lastSentAction); // 本当はここでチェーン処理
-    }
-    if(d.type === 'EXECUTE') {
-        renderOpponentCard(d);
+    if(d.type==='RES') { if(!d.chain) finalize(window.lastSent, true); }
+    if(d.type==='FINAL') render(d, false);
+}
+
+function resolveChain(res) {
+    document.getElementById('chain-panel').style.display='none';
+    if(!res) { conn.send({type:'RES', chain:false}); render(window.pending, false); }
+}
+
+function finalize(d, isMine) { render(d, true); conn.send({...d, type:'FINAL'}); }
+
+function render(d, isMine) {
+    const el = isMine ? window.selectedEl : createCard(d.dbid, false);
+    const zone = DB[d.dbid].t==='monster' ? (isMine?'mz':'opp-mz') : (isMine?'sz':'opp-sz');
+    for(let i=0; i<5; i++) {
+        const s = document.getElementById(zone+i);
+        if(!s.hasChildNodes() || (isMine && el.parentNode === s)) {
+            if(d.act==='SET_MON') el.classList.add('back-side', 'def-pos');
+            if(d.act==='SET_ST') el.classList.add('back-side');
+            if(d.act==='GY') el.remove(); else s.appendChild(el);
+            break;
+        }
     }
 }
 
-function respond(useEffect) {
-    document.getElementById('chain-panel').style.display = 'none';
-    if(!useEffect) {
-        conn.send({ type: 'RESPONSE', ok: true });
-        renderOpponentCard(window.pending);
-    } else {
-        alert("チェーン発動（未実装：手動でカードを動かしてください）");
-    }
+function nextPhase() {
+    if(!isMyTurn) return;
+    const ps = ["DP","SP","M1","BP","M2","EP"];
+    let idx = ps.indexOf(currentPhase);
+    if(idx < 5) currentPhase = ps[idx+1];
+    else { isMyTurn=false; conn.send({type:'PHASE'}); }
+    updateUI();
 }
 
-function renderOpponentCard(d) {
-    const zone = (MASTER_DB[d.dbid].type === 'monster' ? 'opp-mz' : 'opp-sz') + '0';
-    const slot = document.getElementById(zone);
-    const el = document.createElement('div');
-    el.className = `card ${MASTER_DB[d.dbid].type}`;
-    el.innerText = (d.actionType.includes('SET')) ? "" : d.cardName;
-    if(d.actionType === 'SET_MON') el.classList.add('def-pos', 'back-side');
-    if(d.actionType === 'SET_ST') el.classList.add('back-side');
-    slot.appendChild(el);
-    addLog(`${d.cardName} がプレイされました`);
-}
-
-function hideMenu() { document.getElementById('menu').style.display = 'none'; }
-function addLog(m) { const l = document.getElementById('log'); l.innerHTML += `<div>> ${m}</div>`; l.scrollTop = l.scrollHeight; }
+function updateUI() { document.getElementById('phase-display').innerText = isMyTurn ? `YOUR TURN (${currentPhase})` : "OPPONENT TURN"; }
+function adjustLP() { let v=prompt("LP増減:"); if(v){ myLP+=parseInt(v); document.getElementById('my-lp').innerText=myLP; } }
 </script>
 </body>
 </html>
