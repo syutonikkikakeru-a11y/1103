@@ -3,188 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>1103 Online: HERO vs Laggia</title>
+    <title>1103 Professional: HERO vs Laggia</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: none; }
-        #game { display: flex; flex-direction: column; height: 100vh; }
-        .field-half { flex: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 1px solid #333; }
-        .opponent { background: #1a0808; }
-        .player { background: #08081a; }
-        .row { display: flex; gap: 4px; margin: 3px 0; }
-        .slot { width: 50px; height: 72px; border: 1px solid #333; border-radius: 4px; background: rgba(255,255,255,0.03); position: relative; }
-        .card { width: 50px; height: 72px; border-radius: 4px; font-size: 8px; font-weight: bold; text-align: center; border: 1px solid #000; position: absolute; display: flex; align-items: center; justify-content: center; padding: 2px; box-sizing: border-box; cursor: pointer; }
-        .monster { background: #d2b48c; color: #000; }
-        .spell { background: #1d8c6e; color: #fff; }
-        .trap { background: #ba266d; color: #fff; }
-        .back-side { background: #411 !important; color: #411 !important; border: 2px solid #200; }
-        #hand { height: 95px; background: #111; display: flex; justify-content: center; align-items: center; gap: 5px; border-top: 2px solid #444; }
-        .lp { position: absolute; left: 10px; font-size: 24px; font-family: monospace; font-weight: bold; z-index: 100; cursor: pointer; text-shadow: 0 0 8px #000; }
-        .opp-lp { top: 10px; color: #f55; }
-        .my-lp { bottom: 105px; color: #5f5; }
-        #menu { display: none; position: fixed; background: #222; border: 1px solid #fff; z-index: 2000; padding: 5px; border-radius: 5px; }
-        #menu button { display: block; width: 120px; padding: 12px; margin: 4px; background: #444; color: #fff; border: none; border-radius: 4px; }
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 3000; flex-direction: column; align-items: center; justify-content: center; }
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 4000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        body { margin: 0; background: #0a0a0a; color: #eee; font-family: 'MS PGothic', sans-serif; overflow: hidden; touch-action: none; }
+        #game { display: flex; flex-direction: column; height: 100vh; position: relative; }
+        .field-half { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-bottom: 2px solid #444; position: relative; }
+        .row { display: flex; gap: 8px; margin: 5px 0; }
+        .slot { width: 60px; height: 85px; border: 1px dashed #444; border-radius: 4px; background: rgba(255,255,255,0.02); position: relative; }
+        .card { width: 60px; height: 85px; border-radius: 4px; font-size: 10px; font-weight: bold; text-align: center; position: absolute; display: flex; align-items: center; justify-content: center; padding: 4px; box-sizing: border-box; cursor: pointer; border: 1px solid #000; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+        .monster { background: linear-gradient(135deg, #d2b48c, #a67c52); color: #000; }
+        .spell { background: linear-gradient(135deg, #1d8c6e, #135d49); color: #fff; }
+        .trap { background: linear-gradient(135deg, #ba266d, #7a1947); color: #fff; }
+        .back-side { background: repeating-linear-gradient(45deg, #411, #411 5px, #200 5px, #200 10px) !important; color: transparent !important; border: 2px solid #622; }
+        #hand { height: 110px; background: #111; display: flex; justify-content: center; align-items: center; gap: 8px; border-top: 3px solid #555; overflow-x: auto; }
+        .lp-bar { position: absolute; left: 15px; font-size: 28px; font-family: 'Courier New', monospace; font-weight: bold; text-shadow: 0 0 10px #000; }
+        .opp-lp { top: 20px; color: #ff4444; }
+        .my-lp { bottom: 125px; color: #44ff44; }
+        #log { position: fixed; right: 10px; top: 50%; transform: translateY(-50%); width: 180px; height: 200px; background: rgba(0,0,0,0.7); font-size: 11px; padding: 8px; overflow-y: auto; border: 1px solid #444; z-index: 500; }
+        #chain-panel { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 2px solid #f00; padding: 20px; z-index: 5000; text-align: center; box-shadow: 0 0 30px #f00; }
+        #chain-panel button { padding: 10px 20px; margin: 10px; cursor: pointer; background: #444; color: #fff; border: 1px solid #888; }
+        #menu { display: none; position: fixed; background: #333; border: 1px solid #fff; z-index: 2000; padding: 5px; border-radius: 4px; }
+        #menu button { display: block; width: 130px; padding: 10px; margin: 3px; background: #555; color: #fff; border: none; font-size: 13px; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h3>1103 Online Duel</h3>
-    <div id="status">Connecting to Peer...</div>
-    <div id="url-box" style="font-size: 11px; margin: 20px; color: #0af; word-break: break-all; padding: 10px; border: 1px dashed #444;"></div>
-    <button onclick="startSolo()" style="padding: 10px 20px;">一人でテスト</button>
+    <h2>1103 Online: Professional Mode</h2>
+    <div id="status">Peer接続中...</div>
+    <div id="url-box" style="margin:20px; padding:10px; border:1px dashed #666; font-size:12px; color:#0cf;"></div>
+    <div style="margin-top:20px;">
+        <button onclick="pickDeck('HERO')">HEROデッキを使う</button>
+        <button onclick="pickDeck('Laggia')">ラビットラギアを使う</button>
+    </div>
 </div>
+
+<div id="chain-panel">
+    <div id="chain-msg"></div>
+    <button onclick="respondChain(true)">発動する</button>
+    <button onclick="respondChain(false)">なし</button>
+</div>
+
+<div id="log"></div>
 
 <div id="game">
     <div class="field-half opponent">
-        <div class="lp opp-lp" id="opp-lp">8000</div>
-        <div class="row" id="opp-st">
-            <div class="slot" id="opp-sz4"></div><div class="slot" id="opp-sz3"></div><div class="slot" id="opp-sz2"></div><div class="slot" id="opp-sz1"></div><div class="slot" id="opp-sz0"></div>
-        </div>
-        <div class="row" id="opp-m">
-            <div class="slot" id="opp-mz4"></div><div class="slot" id="opp-mz3"></div><div class="slot" id="opp-mz2"></div><div class="slot" id="opp-mz1"></div><div class="slot" id="opp-mz0"></div>
-        </div>
+        <div class="lp-bar opp-lp" id="opp-lp">8000</div>
+        <div class="row"><div class="slot" id="opp-sz4"></div><div class="slot" id="opp-sz3"></div><div class="slot" id="opp-sz2"></div><div class="slot" id="opp-sz1"></div><div class="slot" id="opp-sz0"></div></div>
+        <div class="row"><div class="slot" id="opp-mz4"></div><div class="slot" id="opp-mz3"></div><div class="slot" id="opp-mz2"></div><div class="slot" id="opp-mz1"></div><div class="slot" id="opp-mz0"></div></div>
     </div>
     <div class="field-half player">
-        <div class="lp my-lp" id="my-lp" onclick="adjustLP()">8000</div>
-        <div class="row" id="my-m">
-            <div class="slot" id="mz0"></div><div class="slot" id="mz1"></div><div class="slot" id="mz2"></div><div class="slot" id="mz3"></div><div class="slot" id="mz4"></div>
-        </div>
-        <div class="row" id="my-st">
-            <div class="slot" id="sz0"></div><div class="slot" id="sz1"></div><div class="slot" id="sz2"></div><div class="slot" id="sz3"></div><div class="slot" id="sz4"></div>
-        </div>
+        <div class="lp-bar my-lp" id="my-lp" onclick="manualLP()">8000</div>
+        <div class="row"><div class="slot" id="mz0"></div><div class="slot" id="mz1"></div><div class="slot" id="mz2"></div><div class="slot" id="mz3"></div><div class="slot" id="mz4"></div></div>
+        <div class="row"><div class="slot" id="sz0"></div><div class="slot" id="sz1"></div><div class="slot" id="sz2"></div><div class="slot" id="sz3"></div><div class="slot" id="sz4"></div></div>
     </div>
     <div id="hand"></div>
 </div>
 
 <div id="menu"></div>
-<div id="modal"><div id="modal-items" style="display:flex; gap:10px;"></div></div>
 
 <script>
-    const DB = {
-        "air": { name: "エアーマン", type: "monster", auto: "SEARCH" },
-        "rab": { name: "ラビット", type: "monster", auto: "RABBIT" },
-        "neo": { name: "ネオス", type: "monster" },
-        "sab": { name: "セイバー", type: "monster" },
-        "gua": { name: "グアイバ", type: "monster" },
-        "war": { name: "警告", type: "trap", auto: "COST2000" },
-        "fus": { name: "超融合", type: "spell" }
-    };
-    let deck = ["air", "rab", "neo", "war", "fus", "sab", "gua", "air", "rab", "neo"];
-    let myLP = 8000, oppLP = 8000, peer = new Peer(), conn, selected = null;
+const CARDS = {
+    air: { name: "エアーマン", type: "monster", atk: 1800, def: 300 },
+    rab: { name: "ラビット", type: "monster", atk: 300, def: 100 },
+    sab: { name: "セイバー", type: "monster", atk: 1900, def: 500 },
+    ana: { name: "アナザー", type: "monster", atk: 1900, def: 1300 },
+    gua: { name: "グアイバ", type: "monster", atk: 1700, def: 1000 },
+    war: { name: "神の警告", type: "trap" },
+    pro: { name: "強欲で謙虚", type: "spell" },
+    mir: { name: "ミラフュ", type: "spell" }
+};
 
-    peer.on('open', id => {
-        const url = window.location.origin + window.location.pathname + '?id=' + id;
-        document.getElementById('status').innerText = "URLを相手に送信してください";
-        document.getElementById('url-box').innerText = url;
-        const tid = new URLSearchParams(window.location.search).get('id');
-        if(tid) { conn = peer.connect(tid); setupConn(); }
+const DECKS = {
+    HERO: ["air", "ana", "ana", "ana", "air", "pro", "pro", "war", "war", "mir", "mir", "air", "ana", "pro", "war"], // 略
+    Laggia: ["rab", "rab", "rab", "sab", "sab", "sab", "gua", "gua", "gua", "war", "war", "pro", "pro", "rab", "sab"] // 略
+};
+
+let deck = [], myLP = 8000, peer = new Peer(), conn, myDeckName = "";
+let isWaiting = false;
+
+function pickDeck(name) {
+    myDeckName = name;
+    deck = Array(40).fill(DECKS[name]).flat().slice(0, 40);
+    for(let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+    document.getElementById('status').innerText = name + "デッキ選択済み。相手を待機...";
+}
+
+peer.on('open', id => {
+    document.getElementById('url-box').innerText = window.location.origin + window.location.pathname + '?id=' + id;
+    const tid = new URLSearchParams(window.location.search).get('id');
+    if(tid) { conn = peer.connect(tid); setupConn(); }
+});
+
+peer.on('connection', c => { conn = c; setupConn(); setTimeout(() => { if(conn.open) startDuel(); }, 1500); });
+
+function setupConn() {
+    conn.on('open', () => {
+        document.getElementById('overlay').style.display = 'none';
+        conn.on('data', data => handleSync(data));
     });
+}
 
-    peer.on('connection', c => { conn = c; setupConn(); setTimeout(startDuel, 1000); });
+function startDuel() { for(let i=0; i<5; i++) draw(); addLog("デュエル開始！"); }
 
-    function setupConn() {
-        conn.on('open', () => {
-            document.getElementById('overlay').style.display = 'none';
-            conn.on('data', data => handleSync(data));
-        });
+function draw() {
+    if(!deck.length) return;
+    const id = deck.shift();
+    const el = createCard(id, CARDS[id], true);
+    document.getElementById('hand').appendChild(el);
+}
+
+function createCard(dbid, data, isMine) {
+    const el = document.createElement('div');
+    el.className = `card ${data.type}`;
+    el.id = 'c-' + Math.random().toString(36).substr(2, 9);
+    el.innerText = data.name;
+    el.dataset.dbid = dbid;
+    if(isMine) el.onclick = (e) => openMenu(e, el, data);
+    return el;
+}
+
+function openMenu(e, el, data) {
+    if(isWaiting) return;
+    const m = document.getElementById('menu');
+    m.style.display = 'block'; m.style.left = e.clientX + 'px'; m.style.top = e.clientY + 'px';
+    const isHand = el.parentNode.id === 'hand';
+    let h = isHand ? `<button onclick="requestAction('PLAY','${el.id}',false)">${data.type==='monster'?'召喚':'発動'}</button><button onclick="requestAction('PLAY','${el.id}',true)">セット</button>` :
+        `<button onclick="requestAction('ACTIVATE','${el.id}')">効果発動</button><button onclick="toGY('${el.id}')">墓地へ</button>`;
+    m.innerHTML = h + `<button onclick="closeMenu()">キャンセル</button>`;
+    window.selectedEl = el;
+}
+
+function requestAction(type, id, isSet) {
+    const el = window.selectedEl;
+    const data = CARDS[el.dataset.dbid];
+    addLog(`${data.name} の ${type} を宣言...`);
+    conn.send({ type: 'CHAIN_STEP', name: data.name, action: type, id: id, dbid: el.dataset.dbid, isSet: isSet });
+    isWaiting = true;
+    closeMenu();
+}
+
+function handleSync(d) {
+    if(d.type === 'CHAIN_STEP') {
+        document.getElementById('chain-msg').innerText = `相手が ${d.name} の ${d.action} を宣言。チェーンしますか？`;
+        document.getElementById('chain-panel').style.display = 'block';
+        window.pendingAction = d;
     }
-
-    function startDuel() { for(let i=0; i<6; i++) draw(); conn.send({type:'START'}); }
-    function startSolo() { document.getElementById('overlay').style.display = 'none'; for(let i=0; i<6; i++) draw(); }
-
-    function draw() {
-        if(!deck.length) return;
-        const id = deck.shift();
-        const card = createCard(id, DB[id], true);
-        document.getElementById('hand').appendChild(card);
+    if(d.type === 'CHAIN_RES') {
+        isWaiting = false;
+        if(d.res) { addLog("相手がチェーンを発動！"); }
+        else { executeAction(window.lastAction); }
     }
+    if(d.type === 'EXEC') { syncExecute(d); }
+    if(d.type === 'LP') document.getElementById('opp-lp').innerText = d.val;
+}
 
-    function createCard(id, data, isMine) {
-        const el = document.createElement('div');
-        el.className = `card ${data.type}`;
-        el.id = 'c-' + Math.random().toString(36).substr(2, 9);
-        el.innerText = data.name;
-        el.dataset.dbid = id;
-        if(isMine) el.onclick = (e) => openMenu(e, el, data);
-        return el;
+function respondChain(res) {
+    document.getElementById('chain-panel').style.display = 'none';
+    conn.send({ type: 'CHAIN_RES', res: res });
+    if(!res) { syncExecute(window.pendingAction); }
+}
+
+function syncExecute(d) {
+    if(d.action === 'PLAY') {
+        const slotType = CARDS[d.dbid].type === 'monster' ? 'mz' : 'sz';
+        const targetSlot = document.getElementById('opp-' + slotType + '0'); // 簡易的に0番
+        const c = createCard(d.dbid, CARDS[d.dbid], false);
+        if(d.isSet) { c.classList.add('back-side'); }
+        targetSlot.appendChild(c);
     }
+    addLog(`${d.name} が着地しました`);
+}
 
-    function openMenu(e, el, data) {
-        selected = { el, data, id: el.id };
-        const m = document.getElementById('menu');
-        m.style.display = 'block'; m.style.left = e.clientX + 'px'; m.style.top = e.clientY + 'px';
-        let h = el.parentNode.id === 'hand' ? 
-            `<button onclick="play(false)">${data.type==='monster'?'召喚':'発動'}</button><button onclick="play(true)">セット</button>` :
-            (el.classList.contains('back-side') ? `<button onclick="flip()">発動</button>` : '') + `<button onclick="toGY()">墓地へ</button>`;
-        m.innerHTML = h + `<button onclick="closeMenu()">閉じる</button>`;
-    }
+function addLog(msg) {
+    const l = document.getElementById('log');
+    l.innerHTML += `<div>> ${msg}</div>`;
+    l.scrollTop = l.scrollHeight;
+}
 
-    function play(isSet) {
-        const { el, data, id } = selected;
-        const zone = data.type === 'monster' ? 'mz' : 'sz';
-        for(let i=0; i<5; i++) {
-            const slot = document.getElementById(zone + i);
-            if(!slot.hasChildNodes()) {
-                if(isSet) el.classList.add('back-side');
-                slot.appendChild(el);
-                if(conn) conn.send({ type:'PLAY', id, cardId: el.dataset.dbid, zone: zone+i, isSet });
-                if(!isSet) triggerAuto(data.auto);
-                break;
-            }
-        }
-        closeMenu();
-    }
-
-    function triggerAuto(effect) {
-        if(effect === "SEARCH") alert("エアーマン効果：デッキからHEROを加えました");
-        if(effect === "RABBIT") {
-            if(confirm("ラビット効果発動！セイバー2体を呼びますか？")) {
-                selected.el.remove();
-                if(conn) conn.send({type:'GY', id: selected.id});
-                for(let j=0; j<2; j++) {
-                    const c = createCard("sab", DB["sab"], true);
-                    for(let i=0; i<5; i++) {
-                        const s = document.getElementById('mz'+i);
-                        if(!s.hasChildNodes()) { s.appendChild(c); 
-                        if(conn) conn.send({type:'PLAY', id:c.id, cardId:'sab', zone:'mz'+i, isSet:false});
-                        break; }
-                    }
-                }
-            }
-        }
-    }
-
-    function flip() {
-        selected.el.classList.remove('back-side');
-        if(conn) conn.send({ type:'FLIP', id: selected.el.id, name: selected.data.name });
-        triggerAuto(selected.data.auto);
-        closeMenu();
-    }
-
-    function toGY() { selected.el.remove(); if(conn) conn.send({ type:'GY', id: selected.el.id }); closeMenu(); }
-
-    function adjustLP() {
-        const v = prompt("LP増減:", "-2000");
-        if(v) { myLP += parseInt(v); document.getElementById('my-lp').innerText = myLP; if(conn) conn.send({ type:'LP', val: myLP }); }
-    }
-
-    function handleSync(d) {
-        if(d.type === 'START') for(let i=0; i<6; i++) draw();
-        if(d.type === 'LP') document.getElementById('opp-lp').innerText = d.val;
-        if(d.type === 'PLAY') {
-            const slot = document.getElementById('opp-' + d.zone);
-            const c = createCard(d.cardId, DB[d.cardId], false);
-            c.id = d.id; if(d.isSet) { c.classList.add('back-side'); c.innerText = ""; }
-            slot.appendChild(c);
-        }
-        if(d.type === 'FLIP') { const c = document.getElementById(d.id); c.classList.remove('back-side'); c.innerText = d.name; }
-        if(d.type === 'GY') { const c = document.getElementById(d.id); if(c) c.remove(); }
-    }
-
-    function closeMenu() { document.getElementById('menu').style.display = 'none'; }
+function closeMenu() { document.getElementById('menu').style.display = 'none'; }
+function manualLP() { /* LP増減ロジック */ }
 </script>
 </body>
 </html>
